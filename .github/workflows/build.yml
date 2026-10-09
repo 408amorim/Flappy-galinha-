@@ -1,0 +1,45 @@
+name: Montar app Android
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Criar projeto do app
+        run: |
+          mkdir www
+          cp index.html www/
+          npm init -y
+          npm i @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor-community/admob@7 @capacitor/assets@3
+          echo '{"appId":"com.flappygalinha.jogo","appName":"Flappy Galinha","webDir":"www"}' > capacitor.config.json
+          npx cap add android
+          mkdir assets
+          cp *.png assets/icon-only.png
+          npx capacitor-assets generate --android
+          sed -i 's#</application>#<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/></application>#' android/app/src/main/AndroidManifest.xml
+          npx cap sync android
+
+      - name: Montar o APK de teste
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flappy-galinha-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
